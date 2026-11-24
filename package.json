@@ -11,7 +11,10 @@
     "typecheck": "turbo run typecheck",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "prepare": "husky"
+    "prepare": "husky",
+    "db:up": "docker compose -f infra/docker-compose.yml --env-file .env up -d --wait",
+    "db:down": "docker compose -f infra/docker-compose.yml --env-file .env down",
+    "db:logs": "docker compose -f infra/docker-compose.yml --env-file .env logs -f postgres"
   },
   "packageManager": "pnpm@12.21.0+sha512.66fd8278ee28935ce951792d34367ff3af5c432a2756445823029533835b8da529bbe0be5130afd56ed0713fb8789e47bad82d93bd5ae2fe54b15562d6276ef0",
   "devDependencies": {
