@@ -50,6 +50,58 @@ mobile app, all sharing typed code in a single monorepo.
 5. **Review** _(planned):_ Spaced-repetition flashcards on the web and in an
    Expo mobile app.
 
+```mermaid
+flowchart LR
+  subgraph pc["User's computer"]
+    media["Video or show<br/>(any app)"]
+    subgraph desktop["apps/desktop · Electron"]
+      mainproc["Main process<br/>window + audio permission"]
+      overlay["Overlay · React<br/>captions, hover, select, pinyin"]
+    end
+  end
+
+  subgraph api["apps/api · NestJS"]
+    ws["WebSocket gateway"]
+    stt["Transcription service<br/>(provider interface)"]
+    seg["Word segmentation<br/>Intl.Segmenter"]
+    rest["REST endpoints"]
+    enrich["AI enrichment"]:::planned
+  end
+
+  provider["Speech-to-text<br/>AWS Transcribe or Deepgram"]
+  llm["LLM provider"]:::planned
+  db[("PostgreSQL<br/>transcripts + saved words<br/>no audio")]
+
+  web["apps/web · Next.js<br/>transcript + word bank"]
+  mobile["apps/mobile · Expo<br/>flashcard review"]:::planned
+
+  subgraph shared["packages/ (imported by every app)"]
+    config["@wal/config"]
+    types["@wal/types"]
+    zh["@wal/zh<br/>CC-CEDICT + pinyin"]:::planned
+    client["@wal/api-client"]:::planned
+    srs["@wal/srs"]:::planned
+  end
+
+  media -->|"system audio (loopback)"| overlay
+  mainproc -.->|"grants loopback audio"| overlay
+  overlay -->|"audio chunks over WebSocket"| ws
+  ws --> stt
+  stt <--> provider
+  stt -->|"final text"| seg
+  seg --> db
+  ws -->|"captions + word boundaries"| overlay
+  overlay -->|"save word"| rest
+  rest --> db
+  web -->|"REST"| rest
+  mobile -->|"REST"| rest
+  rest --> enrich
+  enrich --> llm
+  overlay -.->|"Done: open session"| web
+
+  classDef planned stroke-dasharray: 5 5
+```
+
 ## Design decisions
 
 The reasoning behind each choice is recorded as an Architecture Decision
@@ -65,6 +117,10 @@ Record in [`docs/adr/`](docs/adr/).
 - **Electron for the overlay.** A transparent, click-through, always-on-top
   window plus system audio capture, written in the same TypeScript as the
   rest of the stack.
+- **A local dictionary for instant lookups.** Captions are split into words
+  on the backend. Hover translations and pinyin come from a bundled
+  CC-CEDICT dictionary, so they're instant and free. AI is saved for the
+  web app, where it explains words in context.
 - **One TypeScript monorepo.** pnpm workspaces + Turborepo let the desktop,
   web, mobile, and API apps share types (validated with zod), an API client,
   and spaced-repetition logic, so a change to a shared type is checked
@@ -147,7 +203,7 @@ A 10-week plan across Phases 0–9.
 - ✅ Monorepo, shared config and types
 - ✅ Quality gates: Husky, lint-staged, commitlint, CI
 - ✅ Local Postgres in Docker
-- ⏳ Architecture docs: ADRs and diagram
+- ✅ Architecture docs: ADRs and diagram
 - ⏳ Electron overlay with live captions
 - ⏳ NestJS API with streaming speech-to-text
 - ⏳ Web app: transcript and AI-enriched word bank
